@@ -7,17 +7,22 @@ public class Player : MonoBehaviour
     // Variables
     public float runSpeed = 8f;
     public float walkSpeed = 6f;
+    public float dashSpeed = 20f;
+    public float dashTime = 2f;
     public float gravity = -10f;
     public float jumpHeight = 15f;
     public float groundRayDistance = 1.1f;
     private CharacterController controller; // Reference to character controller
     private Vector3 motion; // Is the movement offset per frame
-    private bool isJumping = false;
+    private bool isJumping;
+    private float currentJumpHeight;
+    private float currentSpeed;
 
     // Functions
     private void Start()
     {
         controller = GetComponent<CharacterController>();
+        currentSpeed = walkSpeed;
     }
     private void Update()
     {
@@ -25,10 +30,10 @@ public class Player : MonoBehaviour
         float inputH = Input.GetAxis("Horizontal");
         float inputV = Input.GetAxis("Vertical");
         // Left Shift Input
-        bool inputRun = Input.GetKey(KeyCode.LeftShift);
+        bool inputRun = Input.GetKeyDown(KeyCode.LeftShift);
+        bool inputWalk = Input.GetKeyUp(KeyCode.LeftShift);
         // Space Bar Input
         bool inputJump = Input.GetButtonDown("Jump");
-
         // Put Horizontal & Vertical input into vector
         Vector3 inputDir = new Vector3(inputH, 0f, inputV);
         // Rotate direction to Player's Direction
@@ -36,54 +41,62 @@ public class Player : MonoBehaviour
         // If input exceeds length of 1
         if (inputDir.magnitude > 1f)
         {
-            // Normalize it to 1f
+            // Normalize it to 1f!
             inputDir.Normalize();
         }
 
+        // If running
         if (inputRun)
         {
-            Run(inputDir.x, inputDir.z);
-        }
-        else
-        {
-            Walk(inputDir.x, inputDir.z);
+            currentSpeed = runSpeed;
         }
 
-        // If Player is on the ground AND pressed "Jump"
-        if (IsGrounded() && inputJump)
+        if (inputWalk)
         {
-            // Make the Player Jump
-            Jump();
+            currentSpeed = walkSpeed;
         }
 
-        // If is NOT Grounded AND isJumping
-        if (!IsGrounded() && isJumping)
+        Move(inputDir.x, inputDir.z, currentSpeed);
+
+        // If is Grounded
+        if (controller.isGrounded)
         {
-            // Set isJumping to false
-            isJumping = false;
+            // .. And jump?
+            if (inputJump)
+            {
+                Jump(jumpHeight);
+            }
+
+            // Cancel the y velocity
+            motion.y = 0f;
+
+            // Is jumping bool set to true
+            if (isJumping)
+            {
+                // Set jump height
+                motion.y = currentJumpHeight;
+                // Reset back to false
+                isJumping = false;
+            }
         }
+
 
         motion.y += gravity * Time.deltaTime;
-
         controller.Move(motion * Time.deltaTime);
-    }
-    private bool IsGrounded()
-    {
-        // Raycast below the player
-        Ray groundRay = new Ray(transform.position, -transform.up);
-        // If hitting something
-        if (Physics.Raycast(groundRay, groundRayDistance))
-        {
-            return true;
-        }
-        return false;
     }
     private void Move(float inputH, float inputV, float speed)
     {
         Vector3 direction = new Vector3(inputH, 0f, inputV);
-
         motion.x = direction.x * speed;
         motion.z = direction.z * speed;
+    }
+    IEnumerator SpeedBoost(float startDash, float endDash, float delay)
+    {
+        currentSpeed = startDash;
+
+        yield return new WaitForSeconds(delay);
+
+        currentSpeed = endDash;
     }
     public void Walk(float inputH, float inputV)
     {
@@ -93,10 +106,13 @@ public class Player : MonoBehaviour
     {
         Move(inputH, inputV, runSpeed);
     }
-    public void Jump()
+    public void Jump(float height)
     {
-        motion.y = jumpHeight;
-        isJumping = true; // We are jumping
+        isJumping = true; // We are jumping!
+        currentJumpHeight = height;
     }
-
+    public void Dash()
+    {
+        StartCoroutine(SpeedBoost(dashSpeed, walkSpeed, dashTime));
+    }
 }
