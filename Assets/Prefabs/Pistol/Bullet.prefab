@@ -210,6 +210,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 87a74353213536546b51c907a8b5f78f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  damage: 10
   speed: 10
   line: {fileID: 4182445966152858310}
   effectPrefab: {fileID: 0}
